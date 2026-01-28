@@ -10,6 +10,7 @@ const el = (id) => document.getElementById(id);
 const upload = el("upload");
 const sizeSel = el("size");
 const paletteSel = el("palette");
+const schemeSel = el("scheme");
 const gridChk = el("grid");
 const btnConvert = el("convert");
 const canvasO = el("original");
@@ -33,6 +34,33 @@ let lastResult = null; // {width,height, pixels:Uint8ClampedArray, counts:[...]}
 async function loadPalettes(){
   const res = await fetch("./palettes.json");
   palettes = await res.json();
+}
+
+
+function syncPaletteLock(){
+  if(!schemeSel || !paletteSel) return;
+  const mode = schemeSel.value;
+
+  if(mode === "cn216"){
+    // 锁定为 A–M 实色216，避免出现“体系不一致”
+    paletteSel.value = "cn216";
+    paletteSel.disabled = true;
+  }else{
+    paletteSel.disabled = false;
+    // 如果之前被锁在 cn216，切换到其他体系时，自动切到对应色卡
+    if(paletteSel.value === "cn216"){
+      paletteSel.value = mode; // perler57 / hama53 / web216
+    }
+  }
+
+  // 更新说明文字（可选）
+  const sub = document.querySelector(".subtitle");
+  if(sub){
+    if(mode === "cn216") sub.textContent = "A–M 实色216（标准色号，系列优先，不跨系列）";
+    else if(mode === "perler57") sub.textContent = "Perler 官方色卡（57色）";
+    else if(mode === "hama53") sub.textContent = "Hama 官方色卡（53色）";
+    else sub.textContent = "通用 216 色（6×6×6）";
+  }
 }
 
 function hexToRgb(hex){
@@ -202,6 +230,8 @@ function nearestColorLabInSeries(lab, pal, series){
 }
 
 function drawPreview(){
+  if(!imgBitmap) return;
+
   const s = parseInt(sizeSel.value,10);
   // Original preview canvas uses nearest-neighbor to show pixels
   canvasO.width = s;
@@ -275,9 +305,12 @@ function nearestColorLab(lab, paletteColors){
 }
 
 function convert(){
+  if(!imgBitmap){ alert("请先上传一张照片再转换。"); return; }
   setStatus("正在计算配色…");
 const s = parseInt(sizeSel.value,10);
-  const palKey = paletteSel.value;
+  const mode = schemeSel ? schemeSel.value : paletteSel.value;
+  // A–M 模式强制使用 cn216 色卡
+  const palKey = (mode === "cn216") ? "cn216" : paletteSel.value;
   const pal = buildPalette(palettes[palKey]);
 
   // get pixels from original preview
@@ -541,4 +574,5 @@ dlCsv.addEventListener("click", (e)=>{ e.preventDefault(); downloadCountsCsv(); 
 
 (async function init(){
   await loadPalettes();
+  syncPaletteLock();
 })();
