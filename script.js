@@ -408,10 +408,11 @@ const s = parseInt(sizeSel.value,10);
       continue;
     }
     const lab = rgbToLab(r,g,b);
+    const toleranceModeSel = document.getElementById("toleranceMode");
     let idx;
     if(palKey === "cn216" && pal.bySeries){
       const series = pickSeriesForPixel(r,g,b,pal);
-      const mode = (toleranceModeSel && toleranceModeSel.value) ? toleranceModeSel.value : "strict";
+    const mode = (toleranceModeSel && toleranceModeSel.value) ? toleranceModeSel.value : "strict";
       idx = nearestColorLabWithTolerance(r,g,b,lab,pal,series,mode);
     }else{
       idx = nearestColorLab(lab, pal.colors);
