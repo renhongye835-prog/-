@@ -1,3 +1,4 @@
+let toleranceModeSel = null;
 
 function syncToleranceUI(){
   if(!toleranceModeSel) return;
