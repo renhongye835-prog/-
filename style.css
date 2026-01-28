@@ -195,3 +195,6 @@ tbody td{
 @media (max-width: 860px){
   .canvases{grid-template-columns: 1fr}
 }
+
+
+.status{margin-top:10px;font-size:13px;opacity:.85;min-height:18px}

@@ -275,7 +275,8 @@ function nearestColorLab(lab, paletteColors){
 }
 
 function convert(){
-  const s = parseInt(sizeSel.value,10);
+  setStatus("正在计算配色…");
+const s = parseInt(sizeSel.value,10);
   const palKey = paletteSel.value;
   const pal = buildPalette(palettes[palKey]);
 
@@ -333,6 +334,7 @@ function convert(){
   updateStats();
   updateTable();
   renderLabeled();
+  // renderLabeled will clear status when done
 }
 
 function updateStats(){
@@ -372,9 +374,18 @@ function updateTable(){
 }
 
 
+let renderToken = 0;
+
+function setStatus(msg){
+  const s = document.getElementById("status");
+  if(!s) return;
+  s.textContent = msg || "";
+}
+
 function renderLabeled(){
   if(!lastResult || !canvasL) return;
 
+  const token = ++renderToken;
   const s = lastResult.w;
   const cell = parseInt(cellSizeSel?.value ?? "20", 10);
   const fontSize = parseInt(fontSizeSel?.value ?? "14", 10);
@@ -388,55 +399,91 @@ function renderLabeled(){
 
   const showText = (labelsChk?.checked) && cell >= 14;
 
-  for(let y=0; y<s; y++){
-    for(let x=0; x<s; x++){
-      const p = y*s + x;
+  // 先画底色（这一步很快）
+  const total = s * s;
+  for(let p=0; p<total; p++){
+    const idx = lastResult.cellIndex[p];
+    const c = lastResult.palette[idx];
+    const x = p % s;
+    const y = (p / s) | 0;
+    ctx.fillStyle = c.hex;
+    ctx.fillRect(x*cell, y*cell, cell, cell);
+  }
+
+  // 网格先不画，等文字画完再画（避免多次覆盖）
+  // 文字分批绘制，避免浏览器假死
+  if(!showText){
+    // 只画网格即可
+    drawGrid(ctx, s, cell);
+    setStatus("");
+    return;
+  }
+
+  setStatus("正在生成色号… 0%");
+  const chunk = 220; // 每帧绘制的格子数（越大越快但越卡）
+  let p = 0;
+
+  function step(){
+    if(token !== renderToken) return; // 取消旧任务
+
+    const end = Math.min(total, p + chunk);
+    for(; p<end; p++){
       const idx = lastResult.cellIndex[p];
       const c = lastResult.palette[idx];
+      const x = p % s;
+      const y = (p / s) | 0;
 
-      ctx.fillStyle = c.hex;
-      ctx.fillRect(x*cell, y*cell, cell, cell);
+      const lum = (0.2126*c.r + 0.7152*c.g + 0.0722*c.b);
+      const fg = lum > 140 ? "rgba(0,0,0,0.92)" : "rgba(255,255,255,0.95)";
+      const stroke = lum > 140 ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.55)";
 
-      if(showText){
-        const lum = (0.2126*c.r + 0.7152*c.g + 0.0722*c.b);
-        const fg = lum > 140 ? "rgba(0,0,0,0.92)" : "rgba(255,255,255,0.95)";
-        const stroke = lum > 140 ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.55)";
+      ctx.font = `800 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
 
-        ctx.font = `800 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
+      ctx.lineWidth = Math.max(2, Math.floor(fontSize/6));
+      ctx.strokeStyle = stroke;
+      ctx.strokeText(c.code, x*cell + cell/2, y*cell + cell/2);
 
-        // Outline for readability
-        ctx.lineWidth = Math.max(2, Math.floor(fontSize/6));
-        ctx.strokeStyle = stroke;
-        ctx.strokeText(c.code, x*cell + cell/2, y*cell + cell/2);
+      ctx.fillStyle = fg;
+      ctx.fillText(c.code, x*cell + cell/2, y*cell + cell/2);
+    }
 
-        ctx.fillStyle = fg;
-        ctx.fillText(c.code, x*cell + cell/2, y*cell + cell/2);
-      }
+    const percent = Math.floor((p / total) * 100);
+    setStatus(`正在生成色号… ${percent}%`);
+
+    if(p < total){
+      requestAnimationFrame(step);
+    }else{
+      drawGrid(ctx, s, cell);
+      setStatus("");
     }
   }
 
-  if(gridChk?.checked){
-    ctx.save();
-    ctx.globalAlpha = 0.35;
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = "rgba(0,0,0,0.35)";
-    for(let x=0; x<=s; x++){
-      ctx.beginPath();
-      ctx.moveTo(x*cell+0.5, 0);
-      ctx.lineTo(x*cell+0.5, s*cell);
-      ctx.stroke();
-    }
-    for(let y=0; y<=s; y++){
-      ctx.beginPath();
-      ctx.moveTo(0, y*cell+0.5);
-      ctx.lineTo(s*cell, y*cell+0.5);
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
+  requestAnimationFrame(step);
 }
+
+function drawGrid(ctx, s, cell){
+  if(!gridChk?.checked) return;
+  ctx.save();
+  ctx.globalAlpha = 0.35;
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = "rgba(0,0,0,0.35)";
+  for(let x=0; x<=s; x++){
+    ctx.beginPath();
+    ctx.moveTo(x*cell+0.5, 0);
+    ctx.lineTo(x*cell+0.5, s*cell);
+    ctx.stroke();
+  }
+  for(let y=0; y<=s; y++){
+    ctx.beginPath();
+    ctx.moveTo(0, y*cell+0.5);
+    ctx.lineTo(s*cell, y*cell+0.5);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 
 
 function downloadCanvasPng(){
