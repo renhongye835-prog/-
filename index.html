@@ -53,6 +53,30 @@
           <input type="checkbox" id="grid" checked/>
           <span>显示网格</span>
         </label>
+        <label class="check">
+          <input type="checkbox" id="labels" checked/>
+          <span>显示色号</span>
+        </label>
+
+        <label>
+          文字大小
+          <select id="fontSize">
+            <option value="10">10</option>
+            <option value="12" selected>12</option>
+            <option value="14">14</option>
+          </select>
+        </label>
+
+        <label>
+          单格大小
+          <select id="cellSize">
+            <option value="10">10</option>
+            <option value="12" selected>12</option>
+            <option value="16">16</option>
+            <option value="20">20</option>
+          </select>
+        </label>
+
 
         <button class="btn" id="convert" disabled>转换</button>
       </div>
@@ -72,6 +96,11 @@
       <div class="card">
         <div class="cardTitle">拼豆成品（映射到所选色卡）</div>
         <canvas id="result"></canvas>
+      </div>
+
+      <div class="card">
+        <div class="cardTitle">带色号网格（可直接照着拼）</div>
+        <canvas id="labeled"></canvas>
       </div>
 
       <div class="card wide">

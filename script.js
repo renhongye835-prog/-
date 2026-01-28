@@ -14,6 +14,10 @@ const gridChk = el("grid");
 const btnConvert = el("convert");
 const canvasO = el("original");
 const canvasR = el("result");
+const canvasL = el("labeled");
+const labelsChk = el("labels");
+const fontSizeSel = el("fontSize");
+const cellSizeSel = el("cellSize");
 const dlPng = el("downloadPng");
 const dlCsv = el("downloadCsv");
 
@@ -89,6 +93,13 @@ function drawPreview(){
   canvasR.width = s;
   canvasR.height = s;
 
+  // labeled canvas uses enlarged cells
+  const cell = parseInt(cellSizeSel?.value ?? "12", 10);
+  if(canvasL){
+    canvasL.width = s * cell;
+    canvasL.height = s * cell;
+  }
+
   const ctxO = canvasO.getContext("2d", {willReadFrequently:true});
   ctxO.imageSmoothingEnabled = false;
   ctxO.clearRect(0,0,s,s);
@@ -160,6 +171,8 @@ function convert(){
   const out = new Uint8ClampedArray(data.length);
   const counts = new Map(); // code -> {color, count}
 
+  const cellIndex = new Uint16Array(s * s); // each cell -> palette index
+
   for(let i=0;i<data.length;i+=4){
     const r = data[i], g = data[i+1], b = data[i+2], a = data[i+3];
     if(a < 10){
@@ -170,6 +183,8 @@ function convert(){
     const lab = rgbToLab(r,g,b);
     const idx = nearestColorLab(lab, pal.colors);
     const c = pal.colors[idx];
+
+    cellIndex[(i/4)] = idx;
 
     out[i]=c.r; out[i+1]=c.g; out[i+2]=c.b; out[i+3]=255;
 
@@ -188,11 +203,14 @@ function convert(){
   lastResult = {
     w:s, h:s, pixels:out,
     paletteLabel: pal.label,
-    counts: Array.from(counts.values()).sort((a,b)=>b.count-a.count)
+    counts: Array.from(counts.values()).sort((a,b)=>b.count-a.count),
+    cellIndex,
+    palette: pal.colors
   };
 
   updateStats();
   updateTable();
+  renderLabeled();
 }
 
 function updateStats(){
@@ -231,11 +249,69 @@ function updateTable(){
   }
 }
 
+
+function renderLabeled(){
+  if(!lastResult || !canvasL) return;
+
+  const s = lastResult.w;
+  const cell = parseInt(cellSizeSel?.value ?? "12", 10);
+  const fontSize = parseInt(fontSizeSel?.value ?? "12", 10);
+
+  canvasL.width = s * cell;
+  canvasL.height = s * cell;
+
+  const ctx = canvasL.getContext("2d");
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0,0,canvasL.width,canvasL.height);
+
+  // paint cells
+  for(let y=0; y<s; y++){
+    for(let x=0; x<s; x++){
+      const p = y*s + x;
+      const idx = lastResult.cellIndex[p];
+      const c = lastResult.palette[idx];
+
+      ctx.fillStyle = c.hex;
+      ctx.fillRect(x*cell, y*cell, cell, cell);
+
+      if(labelsChk?.checked){
+        const lum = (0.2126*c.r + 0.7152*c.g + 0.0722*c.b);
+        ctx.fillStyle = lum > 140 ? "rgba(0,0,0,0.85)" : "rgba(255,255,255,0.92)";
+        ctx.font = `700 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(c.code, x*cell + cell/2, y*cell + cell/2);
+      }
+    }
+  }
+
+  // grid
+  if(gridChk?.checked){
+    ctx.save();
+    ctx.globalAlpha = 0.35;
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgba(0,0,0,0.35)";
+    for(let x=0; x<=s; x++){
+      ctx.beginPath();
+      ctx.moveTo(x*cell+0.5, 0);
+      ctx.lineTo(x*cell+0.5, s*cell);
+      ctx.stroke();
+    }
+    for(let y=0; y<=s; y++){
+      ctx.beginPath();
+      ctx.moveTo(0, y*cell+0.5);
+      ctx.lineTo(s*cell, y*cell+0.5);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
 function downloadCanvasPng(){
   if(!lastResult) return;
   const link = document.createElement("a");
   link.download = `bead_pattern_${lastResult.w}x${lastResult.h}.png`;
-  link.href = canvasR.toDataURL("image/png");
+  link.href = (canvasL ?? canvasR).toDataURL("image/png");
   link.click();
 }
 
@@ -270,6 +346,15 @@ gridChk.addEventListener("change", ()=>{
   if(!lastResult) return;
   convert();
 });
+
+
+labelsChk?.addEventListener("change", renderLabeled);
+fontSizeSel?.addEventListener("change", renderLabeled);
+cellSizeSel?.addEventListener("change", ()=>{
+  if(imgBitmap) drawPreview();
+  if(lastResult) convert();
+});
+
 
 btnConvert.addEventListener("click", convert);
 dlPng.addEventListener("click", (e)=>{ e.preventDefault(); downloadCanvasPng(); });
