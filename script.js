@@ -1,4 +1,19 @@
 
+function syncToleranceUI(){
+  if(!toleranceModeSel) return;
+  const palKey = paletteSel ? paletteSel.value : "";
+  // Only meaningful for A–M cn216 mapping
+  if(palKey === "cn216"){
+    toleranceModeSel.disabled = false;
+    toleranceModeSel.parentElement && toleranceModeSel.parentElement.classList.remove("disabled");
+  }else{
+    toleranceModeSel.value = "strict";
+    toleranceModeSel.disabled = true;
+    toleranceModeSel.parentElement && toleranceModeSel.parentElement.classList.add("disabled");
+  }
+}
+
+
 /* Photo -> Bead pattern (client-side)
    Palettes:
    - Perler (57) & Hama (53) from Pixel-Beads public HEX charts.
@@ -229,6 +244,68 @@ function nearestColorLabInSeries(lab, pal, series){
   return 0;
 }
 
+
+function nearestColorLabInSeriesWithDist(lab, pal, series){
+  const arr = pal.bySeries && pal.bySeries[series] ? pal.bySeries[series] : pal.colors;
+  let bestLocal = 0;
+  let bestD = Infinity;
+  for(let i=0;i<arr.length;i++){
+    const c = arr[i];
+    const dl = lab[0]-c.lab[0];
+    const da = lab[1]-c.lab[1];
+    const db = lab[2]-c.lab[2];
+    const d = dl*dl + da*da + db*db;
+    if(d < bestD){ bestD=d; bestLocal=i; }
+  }
+  // Map to global index
+  let globalIdx;
+  if(arr === pal.colors){
+    globalIdx = bestLocal;
+  }else{
+    const code = arr[bestLocal].code;
+    globalIdx = 0;
+    for(let j=0;j<pal.colors.length;j++){
+      if(pal.colors[j].code === code){ globalIdx=j; break; }
+    }
+  }
+  return { idx: globalIdx, d: bestD };
+}
+
+function nearestColorLabWithTolerance(r,g,b,lab,pal,primarySeries,mode){
+  // strict: only primary series
+  const primary = nearestColorLabInSeriesWithDist(lab, pal, primarySeries);
+  if(mode !== "smart") return primary.idx;
+
+  // smart tolerance:
+  // if the best match inside the primary series is still far away, allow adjacent series search.
+  // Threshold is squared distance in Lab space.
+  const THRESH = 320; // ~deltaE 18 (since we use squared distance approximation)
+  if(primary.d <= THRESH) return primary.idx;
+
+  const neighbors = {
+    "A":["A","G","B"],
+    "B":["B","A","C"],
+    "C":["C","B","D","E"],
+    "D":["D","C","E"],
+    "E":["E","D","C","F"],
+    "F":["F","E","G"],
+    "G":["G","F","A"],
+    "H":["H","M"],
+    "M":["M","H"]
+  };
+  const cand = neighbors[primarySeries] || [primarySeries];
+
+  let best = primary;
+  for(const s of cand){
+    if(s === primarySeries) continue;
+    if(!(pal.bySeries && pal.bySeries[s] && pal.bySeries[s].length)) continue;
+    const res = nearestColorLabInSeriesWithDist(lab, pal, s);
+    if(res.d < best.d) best = res;
+  }
+  return best.idx;
+}
+
+
 function drawPreview(){
   if(!imgBitmap) return;
 
@@ -334,7 +411,8 @@ const s = parseInt(sizeSel.value,10);
     let idx;
     if(palKey === "cn216" && pal.bySeries){
       const series = pickSeriesForPixel(r,g,b,pal);
-      idx = nearestColorLabInSeries(lab, pal, series);
+      const mode = (toleranceModeSel && toleranceModeSel.value) ? toleranceModeSel.value : "strict";
+      idx = nearestColorLabWithTolerance(r,g,b,lab,pal,series,mode);
     }else{
       idx = nearestColorLab(lab, pal.colors);
     }

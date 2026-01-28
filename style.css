@@ -200,3 +200,7 @@ tbody td{
 .status{margin-top:10px;font-size:13px;opacity:.85;min-height:18px}
 
 select:disabled{opacity:.65;cursor:not-allowed}
+
+.inline{display:inline-flex;align-items:center;gap:8px;margin-left:10px}
+
+.disabled{opacity:.55}
