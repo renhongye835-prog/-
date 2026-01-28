@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>照片 → 拼豆图案（Perler / Hama / 216色）</title>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <div class="logo">●</div>
+      <div>
+        <div class="title">照片 → 拼豆图案</div>
+        <div class="subtitle">A–M 实色216（标准色号）＋ Perler/Hama 官方色卡</div>
+      </div>
+    </div>
+    <div class="actions">
+      <a class="btn ghost" href="#" id="downloadPng">下载拼豆图(PNG)</a>
+      <a class="btn ghost" href="#" id="downloadCsv">下载颜色统计(CSV)</a>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="panel">
+      <div class="row">
+        <label class="file">
+          <input type="file" id="upload" accept="image/*"/>
+          <span>上传照片</span>
+        </label>
+
+        <label>
+          图案尺寸
+          <select id="size">
+            <option value="32">32 × 32（更大颗粒）</option>
+            <option value="48">48 × 48</option>
+            <option value="64" selected>64 × 64（推荐）</option>
+            <option value="96">96 × 96（更细节）</option>
+            <option value="128">128 × 128（更细节）</option>
+</select>
+        </label>
+
+        <label>
+          色号体系
+          <select id="scheme">
+            <option value="cn216" selected>A–M 实色216（标准色号）</option>
+            <option value="perler57">Perler 官方（57色）</option>
+            <option value="hama53">Hama 官方（53色）</option>
+            <option value="web216">通用 216 色（6×6×6）</option>
+          </select>
+        </label>
+
+
+        <label>
+          色卡
+          <select id="palette">
+            <option value="cn216" selected>A–M 实色216（标准色号）</option>
+            <option value="perler57">Perler 官方（57色，含珍珠/霓虹）</option>
+            <option value="hama53">Hama 官方（53色）</option>
+            <option value="web216">通用 216 色（6×6×6）</option>
+          </select>
+        </label>
+
+        <label class="check">
+          <input type="checkbox" id="grid" checked/>
+          <span>显示网格</span>
+        </label>
+        <label class="check">
+          <input type="checkbox" id="labels" checked/>
+          <span>显示色号</span>
+        </label>
+
+        <label>
+          文字大小
+          <select id="fontSize">
+            <option value="10">10</option>
+            <option value="12">12</option>
+            <option value="14" selected>14</option>
+          </select>
+        </label>
+
+        <label>
+          单格大小
+          <select id="cellSize">
+            <option value="10">10</option>
+            <option value="12">12</option>
+            <option value="16">16</option>
+            <option value="20" selected>20</option>
+          </select>
+        </label>
+
+
+        <button class="btn" id="convert" disabled>转换</button>
+        <div id="status" class="status" aria-live="polite"></div>
+      </div>
+
+      <div class="hint" id="hint">
+        先上传一张照片，然后点“转换”。<br/>
+        说明：Perler/Hama 的官方色卡来自 Pixel-Beads 的公开 HEX 列表（用于数字设计对照）。
+      </div>
+    </section>
+
+    <section class="canvases">
+      <div class="card">
+        <div class="cardTitle">原图（缩放预览）</div>
+        <canvas id="original"></canvas>
+      </div>
+
+      <div class="card">
+        <div class="cardTitle">拼豆成品（映射到所选色卡）</div>
+        <canvas id="result"></canvas>
+      </div>
+
+      <div class="card">
+        <div class="cardTitle">带色号网格（可直接照着拼）</div>
+        <canvas id="labeled"></canvas>
+      </div>
+
+      <div class="card wide">
+        <div class="cardTitle">颜色统计</div>
+        <div class="stats">
+          <div class="stat"><div class="k">总格数</div><div class="v" id="statTotal">-</div></div>
+          <div class="stat"><div class="k">使用颜色</div><div class="v" id="statUsed">-</div></div>
+          <div class="stat"><div class="k">色卡</div><div class="v" id="statPalette">-</div></div>
+        </div>
+        <div class="tableWrap">
+          <table id="table">
+            <thead><tr><th>色块</th><th>色号</th><th>名称</th><th>HEX</th><th>数量</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <footer class="foot">
+      <div>提示：如果你要“拼豆色号=你手里那套216色盒子”的编号，请把商家色卡（或对照表）发我，我可以把色号表替换进去。</div>
+    </footer>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
