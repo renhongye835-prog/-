@@ -254,8 +254,8 @@ function renderLabeled(){
   if(!lastResult || !canvasL) return;
 
   const s = lastResult.w;
-  const cell = parseInt(cellSizeSel?.value ?? "12", 10);
-  const fontSize = parseInt(fontSizeSel?.value ?? "12", 10);
+  const cell = parseInt(cellSizeSel?.value ?? "20", 10);
+  const fontSize = parseInt(fontSizeSel?.value ?? "14", 10);
 
   canvasL.width = s * cell;
   canvasL.height = s * cell;
@@ -264,7 +264,8 @@ function renderLabeled(){
   ctx.imageSmoothingEnabled = false;
   ctx.clearRect(0,0,canvasL.width,canvasL.height);
 
-  // paint cells
+  const showText = (labelsChk?.checked) && cell >= 14;
+
   for(let y=0; y<s; y++){
     for(let x=0; x<s; x++){
       const p = y*s + x;
@@ -274,18 +275,26 @@ function renderLabeled(){
       ctx.fillStyle = c.hex;
       ctx.fillRect(x*cell, y*cell, cell, cell);
 
-      if(labelsChk?.checked){
+      if(showText){
         const lum = (0.2126*c.r + 0.7152*c.g + 0.0722*c.b);
-        ctx.fillStyle = lum > 140 ? "rgba(0,0,0,0.85)" : "rgba(255,255,255,0.92)";
-        ctx.font = `700 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+        const fg = lum > 140 ? "rgba(0,0,0,0.92)" : "rgba(255,255,255,0.95)";
+        const stroke = lum > 140 ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.55)";
+
+        ctx.font = `800 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
+
+        // Outline for readability
+        ctx.lineWidth = Math.max(2, Math.floor(fontSize/6));
+        ctx.strokeStyle = stroke;
+        ctx.strokeText(c.code, x*cell + cell/2, y*cell + cell/2);
+
+        ctx.fillStyle = fg;
         ctx.fillText(c.code, x*cell + cell/2, y*cell + cell/2);
       }
     }
   }
 
-  // grid
   if(gridChk?.checked){
     ctx.save();
     ctx.globalAlpha = 0.35;
@@ -306,6 +315,7 @@ function renderLabeled(){
     ctx.restore();
   }
 }
+
 
 function downloadCanvasPng(){
   if(!lastResult) return;
